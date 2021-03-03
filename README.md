@@ -1,6 +1,9 @@
 # Volumio-Control-ESP32
 External controller for volumio music player (https://www.volumio.com) using Arduino ESP32.
 
+## Use-Case
+This Iot device can be used to control the Volumio system in another room or installed behind any furnitures. The device always shows the currently playing music from Volumio. The device is battery operated and can be transported anywhere in the Wifi network. In contrast to the mobile control of Volumio, the device is quicker to access.
+
 It supports the following feature: 
 * WiFi Connect to network
 * IO Socket connection for Volumio music player
