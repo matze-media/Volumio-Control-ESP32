@@ -1,9 +1,9 @@
 # Volumio-Control-ESP32
-External controller for volumio music player using Arduino ESP32.
+External controller for volumio music player (https://www.volumio.com) using Arduino ESP32.
 
 It supports the following feature: 
 * WiFi Connect to network
-* IO Socket connection to Volumio music player
+* IO Socket connection for Volumio music player
 * Display of current playing music
 * visualisiation for OLED 128 x 64 monochrome
 * play, pause and volume control 
