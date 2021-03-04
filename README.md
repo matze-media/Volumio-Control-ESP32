@@ -21,6 +21,9 @@ The following list of parts are necessary and tested:
 * Rotary Encoder Modul KY-040 360°
 * (optional) IRC receiver modul
 
+## Wiring Diagram
+![wiring Diagram](wiring%20diagram.png?raw=true)
+
 ## Libraries
 * U8g2lib by olikraus (https://github.com/olikraus/u8g2)
 * U8g2Fonts: ProFont (http://tobiasjung.name/profont/)
