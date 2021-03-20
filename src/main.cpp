@@ -459,17 +459,17 @@ double getBatteryChargeLevel(double volt){
   */
 
   double _vs[11];
-  _vs[0] = 3.400; 
-  _vs[1] = 3.575;
-  _vs[2] = 3.600;
-  _vs[3] = 3.730;
-  _vs[4] = 3.780;
-  _vs[5] = 3.800;
+  _vs[0] = 3.300; 
+  _vs[1] = 3.375;
+  _vs[2] = 3.420;
+  _vs[3] = 3.530;
+  _vs[4] = 3.680;
+  _vs[5] = 3.750;
   _vs[6] = 3.820;
   _vs[7] = 3.840;
   _vs[8] = 3.870;
-  _vs[9] = 3.920;
-  _vs[10] = 3.950;
+  _vs[9] = 3.950;
+  _vs[10] = 3.970;
 
   for(int i = 10; i >= 0; i--){
     if (volt >= _vs[i] )
@@ -483,13 +483,19 @@ double getBatteryChargeLevel(double volt){
 
 void showBattery()
 {
-  double volt = getBatteryVoltage(); 
-  int chargeLevel = getBatteryChargeLevel(volt);
+  unsigned long now = millis();
 
-  // shutdown to save battery
-  if (volt <= 3.2)
-  {
-    shutDown();
+  // check battery level every minute
+  if (now > lastReadBattery + 60000){
+    batteryVoltage = getBatteryVoltage(); 
+    // shutdown to save battery
+    if (batteryVoltage <= 3.2)
+    {
+      shutDown();
+    }
+
+    batteryChargeLevel = getBatteryChargeLevel(batteryVoltage);
+    lastReadBattery=now;
   }
 
   int xpos = 2;
@@ -501,12 +507,12 @@ void showBattery()
   u8g2.drawFrame(xpos+12,ypos-5,2,2);
 
   // calculate battery_width
-  int battery_width = chargeLevel;
+  int battery_width = batteryChargeLevel;
   u8g2.drawBox(xpos+1,ypos-7,battery_width,6);
 
   // Debug battery voltage
   char str_volt[5];
-  dtostrf(volt, 4, 2, str_volt);
+  dtostrf(batteryVoltage, 4, 2, str_volt);
 
   // draw black box over exisiting text
   u8g2.setDrawColor(0);

@@ -52,6 +52,9 @@ decode_results ir_receiver_result;
 
 // Battery load pin
 int BATTERY_PIN = 34; 
+int batteryChargeLevel = 5;
+double batteryVoltage = 3.7; 
+long lastReadBattery = 0;
 
 // button control
 #define STATE_UNPRESSED 0
