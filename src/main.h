@@ -24,11 +24,11 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 #include <HTTPClient.h>
 
 // define wifi access
-const char* ssid = "m4chine";
-const char* password = "DF0526F481E9CA9461BF21FE85";
+const char* ssid = "SSID";
+const char* password = "WIFI PASSWORD";
 
 // define volumio IP
-const char* volumio_ip = "192.168.1.100";
+const char* volumio_ip = "IP ADRESS of Volumio";
 int volumio_port = 80;
 
 #define USE_SERIAL Serial
