@@ -416,7 +416,7 @@ void showMusic()
   u8g2.clearBuffer();
   showPlayer();
   showVolume();
-  if (volumio.State.service == "mpd")
+  if (volumio.State.service == "mpd" && volumio.State.status == "play")
   {
     showTitle();
     showQuality();
@@ -518,7 +518,7 @@ void showBattery()
   u8g2.setDrawColor(0);
   u8g2.drawRBox(112,17+26+10,30,12,0);
   u8g2.setDrawColor(1);
-  u8g2.setFont(u8g2_font_p01type_tf);
+  u8g2.setFont(u8g2_font_blipfest_07_tr);
   u8g2.drawStr(114,27+26+10,str_volt);
 }
 
@@ -544,33 +544,84 @@ void showSeek(int v_seek)
 
 void showQuality()
 {
-  u8g2.setDrawColor(1);
-
-  if(volumio.State.trackType == "mp3")
-  {
-    u8g2.drawRBox(85,0,18,9,0);
-    u8g2.setFont(u8g2_font_p01type_tf);
-    u8g2.setDrawColor(0);
-    u8g2.drawStr(87,7,"MP3");
-  }else if(volumio.State.trackType == "flac"){
-    u8g2.drawRBox(85,0,23,9,0);
-    u8g2.setFont(u8g2_font_p01type_tf);
-    u8g2.setDrawColor(0);
-    u8g2.drawStr(87,7,"FLAC");
+  unsigned long now = millis();
+  
+  if (volumio.State.status == "stop"){
+    return;
   }
+
+  // switch every 5 sec between trackType and bitdepth/samplerate, 
+  if (now > (lastChangeQuality + 10000)){
+    showSampleQuality();
+    lastChangeQuality=now;
+  }else if (now > (lastChangeQuality + 5000)){
+    showSampleQuality();
+  }else{
+    showTrackType();
+  }
+
+}
+
+void showTrackType()
+{
+  String trackType = volumio.State.trackType;
+  trackType.toUpperCase();
+  if (trackType == "MP3") {
+    trackType = " MP3";
+  }
+  if (trackType == "M4A") {
+    trackType = " M4A";
+  }
+  
+  char c_trackType[6];
+  trackType.toCharArray(c_trackType,6);
+  c_trackType[5] = '\0';
+  
+  u8g2.setDrawColor(1);
+  u8g2.drawRBox(85,0,23,9,0);
+  u8g2.setFont(u8g2_font_blipfest_07_tr);
+  u8g2.setDrawColor(0);
+  u8g2.drawStr(89,7,c_trackType);
+}
+
+void showSampleQuality()
+{
+  String short_samplerate = volumio.State.samplerate;
+  short_samplerate.replace("44.1", "44");
+  short_samplerate.replace(" kHz", "");
+
+  String short_bitdepth = volumio.State.bitdepth;
+  short_bitdepth.replace(" bit", "");
+  
+  // concat bitdepth and samplerate 
+  String sampleQuality = "";
+  sampleQuality += short_bitdepth;
+  sampleQuality += " l ";
+  sampleQuality += short_samplerate;
+
+  char c_sampleQuality[8];
+  sampleQuality.toCharArray(c_sampleQuality,8);
+  c_sampleQuality[7] = '\0';
+
+  u8g2.setDrawColor(1);
+  u8g2.drawRBox(85,0,23,9,0);
+  u8g2.setFont(u8g2_font_blipfest_07_tr);
+  u8g2.setDrawColor(0);
+  u8g2.drawStr(87,7,c_sampleQuality);
 }
 
 void showBitrate()
 {
-  char bitrate[4];
-  volumio.State.bitrate.toCharArray(bitrate,4);
-  bitrate[3] = '\0';
+  // used for webradio
+  char bitrate[9];
+  volumio.State.bitrate.toCharArray(bitrate,9);
+  bitrate[8] = '\0';
 
   u8g2.setDrawColor(1);
-  u8g2.drawRBox(85,0,16,9,0);
-  u8g2.setFont(u8g2_font_p01type_tf);
+  u8g2.drawRBox(75,0,31,9,0);
+  u8g2.setFont(u8g2_font_blipfest_07_tr);
   u8g2.setDrawColor(0);
-  u8g2.drawStr(89,7,bitrate);
+  u8g2.drawStr(77,7,bitrate);
 }
 
 void showVolume()
@@ -580,7 +631,7 @@ void showVolume()
 
     if(volumio.State.volume <= 1){
       u8g2.drawGlyph(21,9,81);
-      u8g2.setFont(u8g2_font_p01type_tf);
+      u8g2.setFont(u8g2_font_blipfest_07_tr);
       u8g2.drawStr(27,7,"X");
 
     }else if(volumio.State.volume < 41){
@@ -594,10 +645,18 @@ void showVolume()
 
 void showWifi()
 {
-  long messRSSI = WiFi.RSSI();
 
-  wifiSignalMedian.add(messRSSI);
-  long RSSI = wifiSignalMedian.getMedian();
+  unsigned long now = millis();
+
+  // check wifi level 20 sec
+  if (now > lastReadWIFI + 20000){
+
+    long messRSSI = WiFi.RSSI();
+
+    wifiSignalMedian.add(messRSSI);
+    RSSI = wifiSignalMedian.getMedian();    
+    lastReadWIFI=now;
+  }
 
   // draw wifi symbol
   u8g2.setFont(u8g2_font_open_iconic_other_1x_t);
