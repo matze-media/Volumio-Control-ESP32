@@ -4,7 +4,8 @@ void setup() {
   USE_SERIAL.begin(115200);
   USE_SERIAL.println("Setup volumio control");
   setCpuFrequencyMhz(80);
-  sleepCount = 0;
+  setupTime = millis();
+  lastPlayTime= millis();
 
   wakeup_reason = esp_sleep_get_wakeup_cause();
   USE_SERIAL.print("Wakeup Reason: ");
@@ -74,6 +75,7 @@ void loop() {
     {
       volumio.getState();
       volumio.getUiSettings();
+      volumio.getQueue();
     }
   }
 
@@ -82,10 +84,17 @@ void loop() {
   switch (volumio.getPushType())
   {
     case Volumio::pushState: //Volumio pushes status update
-      USE_SERIAL.print("Volumio: pushState");
+      USE_SERIAL.println("Volumio: pushState");
       volumio.readState();
       showMusic();
       encoder.setPosition(volumio.State.volume);
+      break;
+    case Volumio::pushQueue: 
+      USE_SERIAL.println("Volumio: pushQueue");
+      if (!readQueueUpdate){
+        countQueue();
+      }
+        
       break;
     case Volumio::pushNone:
       break;
@@ -97,17 +106,20 @@ void loop() {
   if (wakeup_reason == ESP_SLEEP_WAKEUP_TIMER && (volumio.State.status == "pause" || volumio.State.status == "stop") )
   {
     USE_SERIAL.println(volumio.State.status);
-    USE_SERIAL.println("Wakeup but still on pause, stop mode. Go to sleep again."); 
+    USE_SERIAL.println("Wakeup but still on pause, stop mode. Go to sleep again.");
     goToDeepSleep();
     return;
-    //gotoSleep=true;
   }else if (wakeup_reason == ESP_SLEEP_WAKEUP_EXT0 && (volumio.State.status == "pause" || volumio.State.status == "stop"))
   {
     USE_SERIAL.println("Wakeup by ESP_SLEEP_WAKEUP_EXT0 (push button). Start to play."); 
     wakeup_reason = ESP_SLEEP_WAKEUP_ALL;
     volumio.play();
   }
-
+  // wait for some seconds - workaround to handle volumio without status. 
+  if (now > (setupTime + 20000)) {
+    wakeup_reason = ESP_SLEEP_WAKEUP_UNDEFINED;
+  }
+  
   if (volumio.State.service == "mpd")
   {
     showSeek(volumio.State.seek);
@@ -161,13 +173,13 @@ void loop() {
 
   if (volumio.State.status != "play")
   {
-    sleepCount++;
-    if (sleepCount >= (5*60*10)) { // 5 min = 5min*60s*10ms
+    if (lastPlayTime+timeTillSleep <= now )
+    {
       USE_SERIAL.println("No music playing for long time. Go to sleep.");
       goToDeepSleep();
     }
   }else{
-    sleepCount = 0;
+    lastPlayTime=now;
   }
 
   if((wifiMulti.run() == WL_CONNECTED)) {
@@ -188,7 +200,6 @@ void loop() {
       resultButton=STATE_UNPRESSED;
       break;
   }
-
   showBattery();
   u8g2.sendBuffer();
   i++;
@@ -209,6 +220,26 @@ void connectWifi()
   }
 
   USE_SERIAL.println("Connected to Wifi");
+}
+
+void countQueue()
+{
+  readQueueUpdate = true;
+  QueueIndex = 0;
+  USE_SERIAL.print("+++1+++");
+  while (volumio.readNextQueueItem())
+  {
+    USE_SERIAL.print("+++2+++");
+    if (volumio.CurrentQueueItem.name != "")
+    {
+      USE_SERIAL.print("+++3+++");
+      QueueIndex++;
+    }
+  }
+  readQueueUpdate = false;
+  
+  USE_SERIAL.print("QueueIndex: ");
+  USE_SERIAL.println(String(QueueIndex));
 }
 
 void goToDeepSleep()
@@ -416,7 +447,7 @@ void showMusic()
   u8g2.clearBuffer();
   showPlayer();
   showVolume();
-  if (volumio.State.service == "mpd" && volumio.State.status == "play")
+  if (volumio.State.service == "mpd")
   {
     showTitle();
     showQuality();
@@ -566,12 +597,6 @@ void showTrackType()
 {
   String trackType = volumio.State.trackType;
   trackType.toUpperCase();
-  if (trackType == "MP3") {
-    trackType = " MP3";
-  }
-  if (trackType == "M4A") {
-    trackType = " M4A";
-  }
   
   char c_trackType[6];
   trackType.toCharArray(c_trackType,6);
@@ -581,7 +606,9 @@ void showTrackType()
   u8g2.drawRBox(85,0,23,9,0);
   u8g2.setFont(u8g2_font_blipfest_07_tr);
   u8g2.setDrawColor(0);
-  u8g2.drawStr(89,7,c_trackType);
+
+  u8g2_uint_t trackTypeLenght = u8g2.getUTF8Width(c_trackType);
+  u8g2.drawStr(((23-trackTypeLenght)/2)+85,7,c_trackType);
 }
 
 void showSampleQuality()
@@ -607,7 +634,10 @@ void showSampleQuality()
   u8g2.drawRBox(85,0,23,9,0);
   u8g2.setFont(u8g2_font_blipfest_07_tr);
   u8g2.setDrawColor(0);
-  u8g2.drawStr(87,7,c_sampleQuality);
+  //u8g2.drawStr(87,7,c_sampleQuality);
+
+  u8g2_uint_t sampleQualityLenght = u8g2.getUTF8Width(c_sampleQuality);
+  u8g2.drawStr(((23-sampleQualityLenght)/2)+85,7,c_sampleQuality);
 }
 
 void showBitrate()
@@ -827,7 +857,28 @@ void showTitle()
     u8g2.setDrawColor(1);
     u8g2.drawRBox(2,17+26,30,12,0);
     u8g2.setDrawColor(0);
-    u8g2.drawStr(4,27+26,"Title");
+
+    char cQueueInfo[6];
+    long intPosition = volumio.State.position.toInt()+1;
+    String QueueInfo = "";
+    QueueInfo.concat(String(intPosition));
+    QueueInfo.concat("/");
+    QueueInfo.concat(String(QueueIndex));
+    
+    QueueInfo.toCharArray(cQueueInfo,5);
+    
+    unsigned long now = millis();
+    // switch every 5 sec between title and tracknumber 
+    if (now > (lastChangeTitle + 10000)){
+      u8g2.drawStr(4,27+26,"Title");
+      lastChangeTitle=now;
+    }else if (now > (lastChangeTitle + 5000)){
+      u8g2.drawStr(4,27+26,"Title");
+    }else{
+      u8g2_uint_t infoLenght = u8g2.getUTF8Width(cQueueInfo);
+      u8g2.drawStr(((30-infoLenght)/2)+2,27+26,cQueueInfo);
+    }
+
     u8g2.setDrawColor(1);
     // shorten the title
     char title[35];

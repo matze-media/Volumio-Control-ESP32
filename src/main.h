@@ -1,3 +1,4 @@
+
 #include <Arduino.h>
 #include <U8g2lib.h>
 #ifdef U8X8_HAVE_HW_SPI
@@ -24,14 +25,13 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 #include <HTTPClient.h>
 
 // define wifi access
-const char* ssid = "SSID"; //gitignore
-const char* password = "WIFI PASSWORD"; //gitignore
 long RSSI=0;
 long lastReadWIFI=0;
 
+// set time on each setup
+unsigned long setupTime=0;
+
 // define volumio IP
-const char* volumio_ip = "IP ADRESS of Volumio"; //gitignore
-int volumio_port = 80; //gitignore
 
 #define USE_SERIAL Serial
 WiFiMulti wifiMulti;
@@ -42,8 +42,9 @@ int i = 0;
 unsigned long runMillis;
 boolean gotoSleep;
 
-#define DEEP_SLEEP_TIME 10 // How many minutes the ESP should sleep
-int sleepCount = 0;
+#define DEEP_SLEEP_TIME 5 // How many minutes the ESP should sleep
+unsigned long lastPlayTime;
+unsigned long timeTillSleep = 300000;
 esp_sleep_wakeup_cause_t wakeup_reason;
 
 //IRremote
@@ -64,6 +65,8 @@ long lastReadBattery = 0;
 #define STATE_LONG 2
 volatile int  resultButton = 0; // global value set by checkButton()
 
+bool readQueueUpdate = false;
+
 
 // rotery encoder = volumeEncoder
 #define PIN_Encoder_SW 27 //  schwarz  blocks one touch pin
@@ -79,8 +82,12 @@ static int rotaryPos = 0;
 RunningMedian wifiSignalMedian = RunningMedian(15);
 RunningMedian batterySignalMedian = RunningMedian(15);
 
-// Quality swith
+// Quality switch
 long lastChangeQuality=0;
+// Titel/Track switch
+long lastChangeTitle=0;
+
+int QueueIndex=0;
 
 
 //Source https://github.com/volumio/volumio-graphic-resources
@@ -131,3 +138,4 @@ void showWebradioTitle();
 void showTitle();
 double getBatteryVoltage();
 double getBatteryChargeLevel(double volt);
+void countQueue();
