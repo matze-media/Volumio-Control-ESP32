@@ -989,6 +989,8 @@ void Volumio::process()
         pushType = pushInstalledPlugins;
       else if (jsonParser.getValue() == "pushAvailablePlugins")
         pushType = pushAvailablePlugins;
+      else if (jsonParser.getValue() == "pushQueue")
+        pushType = pushQueue;
       else
         pushType = pushUnknown;
     }
